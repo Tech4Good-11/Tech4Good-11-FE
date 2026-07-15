@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { AsyncBoundary, Header, Screen } from "../../components/common";
 import { useApi } from "../../hooks/useApi";
 import { useAuth } from "../../hooks/useAuth";
+import { useParentCheck } from "../../hooks/useParentCheck";
 import { dashboardApi } from "../../apis";
 import type { DashboardResponse } from "../../types/api";
 import { ageFromBirth, GENDER_LABEL } from "../../utils/apiLabels";
@@ -229,23 +230,36 @@ const DEFAULT_CHECKLIST = [
 function ChecklistCard({
   items,
   initialChecked,
+  title = "체크리스트",
+  subtitle,
+  readOnly = false,
   onOpen,
 }: {
   items: { id: string; label: string }[];
   initialChecked: Record<string, boolean>;
+  title?: string;
+  subtitle?: string;
+  readOnly?: boolean;
   onOpen: () => void;
 }) {
   const [checked, setChecked] = useState<Record<string, boolean>>(initialChecked);
-  const done = items.filter((it) => checked[it.id]).length;
+  // 읽기 전용(부모 현황)일 땐 부모가 체크한 상태를 그대로 표시
+  const state = readOnly ? initialChecked : checked;
+  const done = items.filter((it) => state[it.id]).length;
   const percent = items.length ? Math.round((done / items.length) * 100) : 0;
 
   return (
     <div className="rounded-3xl bg-white p-6 shadow-soft">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-card-title font-bold text-gray-900">체크리스트</p>
-        <button type="button" onClick={onOpen} className="shrink-0 text-body font-semibold text-primary-500">
-          전체 보기 ›
-        </button>
+        <div className="min-w-0">
+          <p className="text-card-title font-bold text-gray-900">{title}</p>
+          {subtitle && <p className="mt-0.5 text-caption text-gray-400">{subtitle}</p>}
+        </div>
+        {!readOnly && (
+          <button type="button" onClick={onOpen} className="shrink-0 text-body font-semibold text-primary-500">
+            전체 보기 ›
+          </button>
+        )}
       </div>
 
       <div className="mt-1 flex items-center gap-3">
@@ -258,26 +272,35 @@ function ChecklistCard({
       {/* 세로 1열로 배치하여 텍스트가 훼손되지 않도록 함 */}
       <ul className="mt-4 flex flex-col gap-y-1">
         {items.map((it) => {
-          const on = !!checked[it.id];
+          const on = !!state[it.id];
+          const row = (
+            <>
+              <span
+                className={cn(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-caption font-bold transition-colors",
+                  on ? "bg-primary-500 text-white" : "bg-gray-100 text-transparent",
+                )}
+              >
+                ✓
+              </span>
+              <span className={cn("text-body font-medium", on ? "text-gray-300 line-through" : "text-gray-800")}>
+                {it.label}
+              </span>
+            </>
+          );
           return (
             <li key={it.id}>
-              <button
-                type="button"
-                onClick={() => setChecked((p) => ({ ...p, [it.id]: !p[it.id] }))}
-                className="flex w-full items-center gap-2.5 py-1.5 text-left transition-transform active:scale-[0.98]"
-              >
-                <span
-                  className={cn(
-                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-caption font-bold transition-colors",
-                    on ? "bg-primary-500 text-white" : "bg-gray-100 text-transparent",
-                  )}
+              {readOnly ? (
+                <div className="flex w-full items-center gap-2.5 py-1.5 text-left">{row}</div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setChecked((p) => ({ ...p, [it.id]: !p[it.id] }))}
+                  className="flex w-full items-center gap-2.5 py-1.5 text-left transition-transform active:scale-[0.98]"
                 >
-                  ✓
-                </span>
-                <span className={cn("text-body font-medium", on ? "text-gray-300 line-through" : "text-gray-800")}>
-                  {it.label}
-                </span>
-              </button>
+                  {row}
+                </button>
+              )}
             </li>
           );
         })}
@@ -294,6 +317,7 @@ export default function ElderDashboard() {
     () => dashboardApi.getDashboard(elderId),
     [elderId],
   );
+  const parentCheck = useParentCheck(); // 부모가 로컬(localStorage)에 남긴 오늘 체크 현황
   const base = `/child/elders/${elderId}`;
 
   return (
@@ -316,16 +340,33 @@ export default function ElderDashboard() {
             // AI 상담 요약은 dailyLog.conditionSummary (recentCheckins.summary 는 대부분 null)
             const lastMessage = d.dailyLog?.conditionSummary ?? null;
 
+            // 부모가 오늘 체크한 현황이 있으면 그걸 우선 보여준다(읽기 전용)
+            const parentItems = parentCheck?.items ?? null;
+            const parentUpdated = parentCheck
+              ? `${new Date(parentCheck.updatedAt).getHours()}시 ${new Date(parentCheck.updatedAt).getMinutes()}분 업데이트`
+              : undefined;
+
             return (
               <>
                 <HeroCard d={d} onOthers={() => navigate("/child")} />
 
                 <AiChatCard lastMessage={lastMessage} onStart={() => navigate(`${base}/chat`)} />
-                <ChecklistCard
-                  items={checklist}
-                  initialChecked={initialChecked}
-                  onOpen={() => navigate(`${base}/checkin`)}
-                />
+                {parentItems ? (
+                  <ChecklistCard
+                    title="부모님 오늘 체크 현황"
+                    subtitle={parentUpdated}
+                    readOnly
+                    items={parentItems.map((it) => ({ id: it.id, label: `${it.icon}  ${it.title}` }))}
+                    initialChecked={Object.fromEntries(parentItems.map((it) => [it.id, it.completed]))}
+                    onOpen={() => navigate(`${base}/checkin`)}
+                  />
+                ) : (
+                  <ChecklistCard
+                    items={checklist}
+                    initialChecked={initialChecked}
+                    onOpen={() => navigate(`${base}/checkin`)}
+                  />
+                )}
               </>
             );
           }}

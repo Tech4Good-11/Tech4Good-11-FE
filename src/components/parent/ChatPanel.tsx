@@ -71,6 +71,9 @@ export function ChatPanel({ onGoChecklist }: { onGoChecklist: () => void }) {
     dispatch({ type: "ADD_CHAT_MESSAGE", message: userMsg });
     setInput("");
 
+    // 긍정 답변("네, 했어요" 등)이면 약/산책 항목을 완료로 반영 → 자녀에게도 연동
+    const affirmative = /네|했|응|먹었|다녀|좋/.test(trimmed) && !/아직|안|못/.test(trimmed);
+
     const userCount = chatHistory.filter((m) => m.sender === "user").length + 1;
     const turn = aiTurnFor(userCount);
     if (!turn) return;
@@ -79,7 +82,16 @@ export function ChatPanel({ onGoChecklist }: { onGoChecklist: () => void }) {
     timerRef.current = setTimeout(() => {
       setIsTyping(false);
       if (turn.generateChecklist) {
-        dispatch({ type: "GENERATE_CHECKLIST", items: createTodayChecklist() });
+        const items = createTodayChecklist();
+        dispatch({ type: "GENERATE_CHECKLIST", items });
+        // 방금 답한 약/산책 여부를 체크리스트에 미리 반영
+        if (affirmative) {
+          for (const it of items) {
+            if (it.targetMetric === "medication" || it.targetMetric === "steps") {
+              dispatch({ type: "COMPLETE_CHECKLIST_ITEM", id: it.id });
+            }
+          }
+        }
       }
       dispatch({
         type: "ADD_CHAT_MESSAGE",

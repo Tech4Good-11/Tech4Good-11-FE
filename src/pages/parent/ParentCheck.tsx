@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Header } from "../../components/common";
 import { ChatPanel } from "../../components/parent/ChatPanel";
 import { useApp } from "../../hooks/useApp";
+import { saveParentChecklist } from "../../utils/parentBridge";
 import { cn } from "../../utils/cn";
 
 type Tab = "survey" | "chat";
@@ -22,6 +23,12 @@ export default function ParentCheck() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>(params.get("tab") === "chat" ? "chat" : "survey");
+
+  // 부모 체크리스트가 바뀔 때마다 localStorage 에 미러링 → 자녀 대시보드가 읽어감
+  const { state } = useApp();
+  useEffect(() => {
+    saveParentChecklist(state.checklist);
+  }, [state.checklist]);
 
   function switchTab(next: Tab) {
     setTab(next);
