@@ -1,26 +1,46 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
-import type { UserRole } from "./types";
 import { useApp } from "./hooks/useApp";
+import { useAuth } from "./hooks/useAuth";
+import { Spinner } from "./components/common";
 
 import RoleSelect from "./pages/RoleSelect";
+
+// 부모 (로컬 mock)
 import ParentLayout from "./pages/parent/ParentLayout";
 import ParentHome from "./pages/parent/ParentHome";
 import ParentChat from "./pages/parent/ParentChat";
 import ParentChecklist from "./pages/parent/ParentChecklist";
-import ChildLayout from "./pages/child/ChildLayout";
-import ChildOnboarding from "./pages/child/ChildOnboarding";
-import ChildHome from "./pages/child/ChildHome";
-import ChildTips from "./pages/child/ChildTips";
-import ChildAsk from "./pages/child/ChildAsk";
-import ChildRecords from "./pages/child/ChildRecords";
-import ChildMedical from "./pages/child/ChildMedical";
-import ChildDB from "./pages/child/ChildDB";
-import ChildSettings from "./pages/child/ChildSettings";
 
-/** 역할이 맞을 때만 하위 화면 렌더, 아니면 역할 선택으로. */
-function RequireRole({ role }: { role: UserRole }) {
+// 인증
+import Login from "./pages/auth/Login";
+import Signup from "./pages/auth/Signup";
+
+// 자녀 (보호자) — 온기 API
+import ElderList from "./pages/child/ElderList";
+import ElderAdd from "./pages/child/ElderAdd";
+import ElderDashboard from "./pages/child/ElderDashboard";
+import ElderHealthInfo from "./pages/child/ElderHealthInfo";
+import ElderCheckin from "./pages/child/ElderCheckin";
+import ElderGuardians from "./pages/child/ElderGuardians";
+
+/** 부모(로컬 역할) 가드 */
+function RequireParent() {
   const { state } = useApp();
-  if (state.currentRole !== role) return <Navigate to="/" replace />;
+  if (state.currentRole !== "parent") return <Navigate to="/" replace />;
+  return <Outlet />;
+}
+
+/** 보호자(세션 인증) 가드 */
+function RequireAuth() {
+  const { user, ready } = useAuth();
+  if (!ready) {
+    return (
+      <div className="app-shell min-h-dvh">
+        <Spinner label="불러오는 중…" />
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/child/login" replace />;
   return <Outlet />;
 }
 
@@ -30,9 +50,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<RoleSelect />} />
 
-        {/* 부모 */}
-        <Route path="/parent" element={<RequireRole role="parent" />}>
-          {/* 대화는 풀스크린 (하단 네비 없음) */}
+        {/* 부모 (로컬 mock, 변경 없음) */}
+        <Route path="/parent" element={<RequireParent />}>
           <Route path="chat" element={<ParentChat />} />
           <Route element={<ParentLayout />}>
             <Route index element={<ParentHome />} />
@@ -40,20 +59,18 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* 자녀 */}
-        <Route path="/child" element={<RequireRole role="child" />}>
-          {/* 풀스크린 (하단 네비 없음) */}
-          <Route path="onboarding" element={<ChildOnboarding />} />
-          <Route path="ask" element={<ChildAsk />} />
-          <Route path="medical" element={<ChildMedical />} />
-          <Route path="db" element={<ChildDB />} />
-          {/* 대시보드 (하단 네비 있음) */}
-          <Route element={<ChildLayout />}>
-            <Route index element={<ChildHome />} />
-            <Route path="tips" element={<ChildTips />} />
-            <Route path="records" element={<ChildRecords />} />
-            <Route path="settings" element={<ChildSettings />} />
-          </Route>
+        {/* 자녀(보호자) 인증 */}
+        <Route path="/child/login" element={<Login />} />
+        <Route path="/child/signup" element={<Signup />} />
+
+        {/* 자녀(보호자) — 온기 API */}
+        <Route path="/child" element={<RequireAuth />}>
+          <Route index element={<ElderList />} />
+          <Route path="add" element={<ElderAdd />} />
+          <Route path="elders/:elderId" element={<ElderDashboard />} />
+          <Route path="elders/:elderId/health" element={<ElderHealthInfo />} />
+          <Route path="elders/:elderId/checkin" element={<ElderCheckin />} />
+          <Route path="elders/:elderId/guardians" element={<ElderGuardians />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

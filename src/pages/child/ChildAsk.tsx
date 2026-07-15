@@ -12,7 +12,6 @@ const SUGGESTIONS = [
   "잠은 잘 주무셨어요?",
 ];
 
-
 export default function ChildAsk() {
   const { dispatch } = useApp();
   const navigate = useNavigate();

@@ -3,7 +3,7 @@ import { useApp } from "../hooks/useApp";
 
 /** 앱 진입 — "누가 사용하시나요?" 부모/자녀 역할 분기. */
 export default function RoleSelect() {
-  const { state, dispatch } = useApp();
+  const { dispatch } = useApp();
   const navigate = useNavigate();
 
   function chooseParent() {
@@ -12,8 +12,8 @@ export default function RoleSelect() {
   }
 
   function chooseChild() {
-    dispatch({ type: "SET_ROLE", role: "child" });
-    navigate(state.onboardingComplete ? "/child" : "/child/onboarding");
+    // 보호자 화면은 온기 API + 세션 인증 (RequireAuth 가 로그인 여부 처리)
+    navigate("/child");
   }
 
   return (
