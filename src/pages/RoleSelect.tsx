@@ -19,7 +19,7 @@ export default function RoleSelect() {
   return (
     <div className="app-shell flex min-h-dvh flex-col px-[--app-gutter] pb-10 pt-safe">
       <div className="pt-16">
-        <p className="text-body-lg font-semibold text-primary-500">마음이음</p>
+        <p className="text-body-lg font-semibold text-primary-500">ON-GI</p>
         <h1 className="mt-2 text-display font-bold leading-tight text-gray-900">
           누가
           <br />
@@ -33,14 +33,14 @@ export default function RoleSelect() {
       <div className="mt-12 space-y-4">
         <button
           onClick={chooseParent}
-          className="w-full rounded-card bg-white p-6 text-left shadow-card transition-all duration-fast ease-smooth hover:shadow-card-hover active:scale-[0.99]"
+          className="w-full rounded-3xl bg-white p-6 text-left shadow-soft transition-all duration-fast ease-smooth active:scale-[0.99]"
         >
           <div className="flex items-center gap-4">
-            <span className="flex h-16 w-16 items-center justify-center rounded-sheet bg-primary-50 text-4xl">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-peach text-4xl">
               👵
             </span>
             <div>
-              <p className="text-senior-title font-bold text-gray-900">부모님</p>
+              <p className="text-card-title font-bold text-gray-900">부모님</p>
               <p className="mt-0.5 text-body-lg text-gray-500">건강 기록하기</p>
             </div>
           </div>
@@ -48,10 +48,10 @@ export default function RoleSelect() {
 
         <button
           onClick={chooseChild}
-          className="w-full rounded-card bg-white p-6 text-left shadow-card transition-all duration-fast ease-smooth hover:shadow-card-hover active:scale-[0.99]"
+          className="w-full rounded-3xl bg-white p-6 text-left shadow-soft transition-all duration-fast ease-smooth active:scale-[0.99]"
         >
           <div className="flex items-center gap-4">
-            <span className="flex h-16 w-16 items-center justify-center rounded-sheet bg-primary-50 text-4xl">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-sky text-4xl">
               🧑
             </span>
             <div>

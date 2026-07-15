@@ -28,7 +28,7 @@ export default function Login() {
   return (
     <div className="app-shell flex min-h-dvh flex-col px-[--app-gutter] pb-10 pt-safe">
       <div className="pt-16">
-        <p className="text-body-lg font-semibold text-primary-500">온기</p>
+        <p className="text-body-lg font-semibold text-primary-500">ON-GI</p>
         <h1 className="mt-2 text-display font-bold text-gray-900">로그인</h1>
         <p className="mt-2 text-body-lg text-gray-500">부모님 건강을 함께 돌봐요.</p>
       </div>

@@ -69,6 +69,20 @@ export default {
         // Chat Bubble
         "bubble-user": "#FEF6C7", // 부모 메시지 : 밝은 노란색
         "bubble-ai": "#E8F3FF", // AI 메시지 : 연한 파란색
+        // 앱 전체 배경 (화이트 기반 미니멀 — 아주 옅은 쿨 그레이)
+        canvas: "#F5F7FA",
+        // Accent 토큰 — 블루-모노 통일. 카드는 흰색, 강조/아이콘 배경만 옅은 블루.
+        // (키는 하위호환용으로 유지하되 모두 동일한 블루 톤으로 수렴)
+        accent: {
+          pink: "#EBF3FE",
+          purple: "#EBF3FE",
+          sky: "#EBF3FE",
+          mint: "#EBF3FE",
+          yellow: "#EBF3FE",
+          blue: "#EBF3FE",
+          rose: "#EBF3FE",
+          peach: "#EBF3FE",
+        },
       },
 
       // ── Radius ─────────────────────────────────
@@ -83,6 +97,8 @@ export default {
       boxShadow: {
         card: "0 1px 3px rgba(0, 27, 55, 0.04), 0 1px 2px rgba(0, 27, 55, 0.03)",
         "card-hover": "0 4px 12px rgba(0, 27, 55, 0.06), 0 2px 4px rgba(0, 27, 55, 0.04)",
+        // 프리미엄 · 매우 은은한 부드러운 그림자
+        soft: "0 6px 24px -10px rgba(30, 34, 45, 0.10), 0 2px 8px -4px rgba(30, 34, 45, 0.04)",
         sheet: "0 -4px 16px rgba(0, 27, 55, 0.08)",
         fab: "0 4px 16px rgba(49, 130, 246, 0.24)",
       },

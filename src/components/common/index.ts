@@ -6,3 +6,4 @@ export { BottomNav, type NavItem } from "./BottomNav";
 export { Screen } from "./Screen";
 export { ProgressBar } from "./ProgressBar";
 export { AsyncBoundary, Spinner, ErrorState, EmptyState } from "./AsyncBoundary";
+export { AccentIcon, AccentCard, CategoryTile } from "./Accent";

@@ -13,7 +13,7 @@ interface HeaderProps {
 /** 화면 상단 헤더. 뒤로가기 · 타이틀 · 우측 액션. */
 export function Header({ title, subtitle, onBack, right, senior }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-20 bg-gray-100/90 px-[--app-gutter] pb-3 pt-safe backdrop-blur-sm">
+    <header className="sticky top-0 z-20 bg-canvas/85 px-[--app-gutter] pb-3 pt-safe backdrop-blur-md">
       <div className="flex items-center gap-2 pt-3">
         {onBack && (
           <button

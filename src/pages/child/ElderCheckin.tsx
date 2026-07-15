@@ -1,17 +1,15 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AsyncBoundary, Button, Card, EmptyState, Header, Screen } from "../../components/common";
+import { AccentCard, AsyncBoundary, Button, EmptyState, Header, Screen } from "../../components/common";
 import { useApi } from "../../hooks/useApi";
 import { checkinApi } from "../../apis";
 import { cn } from "../../utils/cn";
+import { ACCENT } from "../../utils/accents";
 
 export default function ElderCheckin() {
   const navigate = useNavigate();
   const elderId = Number(useParams().elderId);
-  const { data, loading, error, reload } = useApi(
-    () => checkinApi.getTodayCheckin(elderId),
-    [elderId],
-  );
+  const { data, loading, error, reload } = useApi(() => checkinApi.getTodayCheckin(elderId), [elderId]);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -55,54 +53,50 @@ export default function ElderCheckin() {
   return (
     <div className="app-shell min-h-dvh">
       <Header title="안부 확인" subtitle="오늘의 문진" onBack={() => navigate(`/child/elders/${elderId}`)} />
-      <Screen withNav={false} className="space-y-3">
+      <Screen withNav={false} className="space-y-4">
         <AsyncBoundary loading={loading} error={error} data={data} onRetry={reload} loadingLabel="문진 불러오는 중…">
           {(items) =>
             items.length === 0 ? (
               <EmptyState icon="🌤️" title="오늘 문진 항목이 없어요" description="등록된 리마인드가 없거나 오늘 일정이 없습니다." />
             ) : (
               <>
-                {items.map((q) => (
-                  <Card key={q.ruleCode} padding="lg">
-                    <p className="text-body-lg font-semibold text-gray-900">{q.question}</p>
-                    {q.scheduledTimes.length > 0 && (
-                      <p className="mt-1 text-caption text-gray-400">{q.scheduledTimes.join(", ")}</p>
-                    )}
+                {items.map((q, i) => (
+                  <AccentCard key={q.ruleCode} accent="purple" emoji={["💬", "💧", "🍚", "🩺"][i % 4]} title={q.question} subtitle={q.scheduledTimes.join(", ") || undefined}>
                     {q.expectedResponse === "yes_no" ? (
-                      <div className="mt-3 flex gap-2">
+                      <div className="flex gap-2.5">
                         {[
-                          { v: "yes", label: "네" },
+                          { v: "yes", label: "네 👍" },
                           { v: "no", label: "아니요" },
-                        ].map((opt) => (
-                          <button
-                            key={opt.v}
-                            onClick={() => setAnswer(q.ruleCode, opt.v)}
-                            className={cn(
-                              "flex-1 rounded-button border-2 py-3 text-body-lg font-bold transition-colors",
-                              answers[q.ruleCode] === opt.v
-                                ? "border-primary-500 bg-primary-50 text-primary-700"
-                                : "border-transparent bg-gray-100 text-gray-600",
-                            )}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
+                        ].map((opt) => {
+                          const active = answers[q.ruleCode] === opt.v;
+                          return (
+                            <button
+                              key={opt.v}
+                              onClick={() => setAnswer(q.ruleCode, opt.v)}
+                              className={cn(
+                                "flex-1 rounded-2xl py-4 text-body-lg font-bold transition-transform active:scale-[0.97]",
+                                !active && "bg-canvas text-gray-500",
+                              )}
+                              style={active ? { backgroundColor: ACCENT.purple.soft, color: ACCENT.purple.deep } : undefined}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : (
                       <input
                         value={answers[q.ruleCode] ?? ""}
                         onChange={(e) => setAnswer(q.ruleCode, e.target.value)}
                         placeholder="답변을 입력해 주세요"
-                        className="mt-3 w-full rounded-input bg-gray-100 px-4 py-3 text-body-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                        className="w-full rounded-2xl bg-canvas px-4 py-3 text-body-lg text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-200"
                       />
                     )}
-                  </Card>
+                  </AccentCard>
                 ))}
 
                 {submitError && (
-                  <p className="rounded-input bg-danger-light px-4 py-3 text-body font-medium text-danger-dark">
-                    {submitError}
-                  </p>
+                  <p className="rounded-input bg-danger-light px-4 py-3 text-body font-medium text-danger-dark">{submitError}</p>
                 )}
 
                 <Button fullWidth onClick={submit} disabled={busy || Object.keys(answers).length === 0}>

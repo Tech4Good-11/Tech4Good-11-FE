@@ -14,7 +14,7 @@
   }
 
   body {
-    @apply bg-gray-100 text-gray-900 font-sans antialiased;
+    @apply bg-canvas text-gray-900 font-sans antialiased;
     margin: 0;
     /* 모바일 탭 하이라이트 제거 (자체 micro interaction 사용) */
     -webkit-tap-highlight-color: transparent;
@@ -34,7 +34,7 @@
 @layer components {
   /* 모바일 퍼스트 앱 컨테이너 (데스크톱에서도 중앙 폭 고정) */
   .app-shell {
-    @apply mx-auto w-full max-w-app min-h-dvh bg-gray-100;
+    @apply mx-auto w-full max-w-app min-h-dvh bg-canvas;
   }
 
   /* 터치 영역 최소 44px 보장 (시니어 화면은 별도 확대) */
