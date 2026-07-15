@@ -8,12 +8,16 @@
  */
 import { ApiError } from "../client";
 import type {
+  ChatRequest,
+  ChatResponse,
   CheckinSubmitRequest,
   CheckinSubmitResponse,
   CheckinTodayResponse,
   ConversationCreateRequest,
   ConversationDetailResponse,
   ConversationSummaryResponse,
+  DailyLogResponse,
+  DailyLogUpdateRequest,
   DashboardResponse,
   DiseaseRequest,
   DiseaseResponse,
@@ -28,7 +32,10 @@ import type {
   GuardianAddRequest,
   GuardianResponse,
   HealthNoteResponse,
+  HealthScore,
   LoginRequest,
+  MedicationIntakeRequest,
+  MedicationIntakeResponse,
   MedicationRequest,
   MedicationResponse,
   MedicationStatus,
@@ -56,6 +63,8 @@ interface Store {
     { conversationId: number; purpose: "daily_checkin"; createdAt: string; summary: string }[]
   >;
   lastCheckin: Record<number, string | null>;
+  dailyLogs: Record<number, DailyLogResponse | null>;
+  intakes: Record<number, Record<number, boolean>>; // elderId → { medicationId: taken }
 }
 
 function seed(): Store {
@@ -110,6 +119,23 @@ function seed(): Store {
       2: [],
     },
     lastCheckin: { 1: "2026-07-15T09:00:00", 2: null },
+    dailyLogs: {
+      1: {
+        elderId: 1,
+        logDate: new Date().toISOString().slice(0, 10),
+        sleepHours: 6.5,
+        exerciseMinutes: 30,
+        conditionSummary: "산책 30분, 혈압약 복용 완료. 컨디션 양호.",
+        checklist: [{ ruleCode: "MED_21", answer: "yes" }],
+        sourceConversationId: 91,
+        updatedAt: "2026-07-15T09:10:00",
+      },
+      2: null, // 신규/대화 없는 어르신 — 기록 없음
+    },
+    intakes: {
+      1: { 21: true }, // 암로디핀 복용 완료
+      2: {},
+    },
   };
 }
 
@@ -144,6 +170,55 @@ function deriveReminders(elderId: number): ElderReminderResponse[] {
     matchedBy: { target: "all", code: null, medicationName: null, diseaseName: null },
   });
   return list;
+}
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+/** 활성 약 전체 + 오늘 복용여부 파생 */
+function deriveTodayMedications(elderId: number): MedicationIntakeResponse[] {
+  const taken = store.intakes[elderId] ?? {};
+  return (store.medications[elderId] ?? [])
+    .filter((m) => m.status === "active")
+    .map((m) => ({
+      medicationId: m.id,
+      medicationName: m.medicationName,
+      dosage: m.dosage,
+      taken: m.id in taken ? taken[m.id] : null, // 미확인이면 null
+      intakeDate: today(),
+    }));
+}
+
+/** 복약 순응도·수면·운동으로 건강점수 계산(가이드 D-8 산식) */
+function deriveHealthScore(elderId: number): HealthScore {
+  const meds = deriveTodayMedications(elderId);
+  const confirmed = meds.filter((m) => m.taken !== null);
+  const medicationScore = confirmed.length
+    ? Math.round((confirmed.filter((m) => m.taken).length / confirmed.length) * 100)
+    : null;
+
+  const log = store.dailyLogs[elderId];
+  const sleepScore =
+    log?.sleepHours != null
+      ? Math.max(0, Math.round(100 - Math.abs(7 - log.sleepHours) * 25))
+      : null;
+  const exerciseScore =
+    log?.exerciseMinutes != null
+      ? Math.max(0, Math.min(100, Math.round((log.exerciseMinutes / 30) * 100)))
+      : null;
+
+  const parts = [medicationScore, sleepScore, exerciseScore].filter(
+    (v): v is number => v != null,
+  );
+  const score = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
+  const comment =
+    score == null
+      ? "아직 오늘 건강 기록이 없어요."
+      : score >= 90
+        ? "오늘 건강 관리가 잘 되고 있어요."
+        : score >= 70
+          ? "대체로 양호하지만 조금 더 신경 써 주세요."
+          : "오늘은 살펴봐야 할 부분이 있어요.";
+  return { score, medicationScore, sleepScore, exerciseScore, comment };
 }
 
 // ── Auth (sessionStorage 로 로그인 유지) ─────────
@@ -221,6 +296,8 @@ export const eldersApi = {
     store.guardians[elder.id] = [{ userId: 1, email: "me@example.com", name: "나", phone: null, relationship: body.relationship }];
     store.checkins[elder.id] = [];
     store.lastCheckin[elder.id] = null;
+    store.dailyLogs[elder.id] = null;
+    store.intakes[elder.id] = {};
     return clone(elder);
   },
   async getElder(elderId: number): Promise<ElderResponse> {
@@ -246,6 +323,8 @@ export const eldersApi = {
     delete store.guardians[elderId];
     delete store.checkins[elderId];
     delete store.lastCheckin[elderId];
+    delete store.dailyLogs[elderId];
+    delete store.intakes[elderId];
   },
 };
 
@@ -262,6 +341,9 @@ export const dashboardApi = {
       medications: clone(store.medications[elderId] ?? []),
       todayReminders: deriveReminders(elderId),
       recentCheckins: clone(store.checkins[elderId] ?? []),
+      dailyLog: clone(store.dailyLogs[elderId] ?? null),
+      todayMedications: deriveTodayMedications(elderId),
+      healthScore: deriveHealthScore(elderId),
     };
   },
 };
@@ -499,5 +581,89 @@ export const documentsApi = {
       extractedDiseases: [],
       healthNoteUpdated: false,
     };
+  },
+};
+
+// ── DailyLog / 복약 체크 ─────────────────────────
+export const dailyLogApi = {
+  async getDailyLog(elderId: number, _date?: string): Promise<DailyLogResponse> {
+    await delay();
+    findElder(elderId);
+    return (
+      clone(store.dailyLogs[elderId]) ?? {
+        elderId,
+        logDate: today(),
+        sleepHours: null,
+        exerciseMinutes: null,
+        conditionSummary: null,
+        checklist: [],
+        sourceConversationId: null,
+        updatedAt: null,
+      }
+    );
+  },
+  async putDailyLog(elderId: number, body: DailyLogUpdateRequest): Promise<DailyLogResponse> {
+    await delay();
+    findElder(elderId);
+    const prev = store.dailyLogs[elderId];
+    const next: DailyLogResponse = {
+      elderId,
+      logDate: body.logDate ?? prev?.logDate ?? today(),
+      sleepHours: body.sleepHours ?? prev?.sleepHours ?? null,
+      exerciseMinutes: body.exerciseMinutes ?? prev?.exerciseMinutes ?? null,
+      conditionSummary: body.conditionSummary ?? prev?.conditionSummary ?? null,
+      checklist: prev?.checklist ?? [],
+      sourceConversationId: prev?.sourceConversationId ?? null,
+      updatedAt: nowIso(),
+    };
+    store.dailyLogs[elderId] = next;
+    return clone(next);
+  },
+  async extractDailyLog(elderId: number, _conversationId?: number): Promise<DailyLogResponse> {
+    await delay(500);
+    return dailyLogApi.getDailyLog(elderId);
+  },
+  async getMedicationIntake(elderId: number, _date?: string): Promise<MedicationIntakeResponse[]> {
+    await delay();
+    findElder(elderId);
+    return deriveTodayMedications(elderId).filter((m) => m.taken !== null);
+  },
+  async submitMedicationIntake(
+    elderId: number,
+    body: MedicationIntakeRequest,
+  ): Promise<MedicationIntakeResponse> {
+    await delay();
+    findElder(elderId);
+    (store.intakes[elderId] ??= {})[body.medicationId] = body.taken;
+    const med = (store.medications[elderId] ?? []).find((m) => m.id === body.medicationId);
+    if (!med) throw new ApiError("리소스를 찾을 수 없습니다.", 404);
+    return {
+      medicationId: med.id,
+      medicationName: med.medicationName,
+      dosage: med.dosage,
+      taken: body.taken,
+      intakeDate: body.intakeDate ?? today(),
+    };
+  },
+};
+
+// ── Chat (에이전트 챗봇 흉내) ────────────────────
+export const chatApi = {
+  async sendChat(elderId: number, body: ChatRequest): Promise<ChatResponse> {
+    await delay(700);
+    const e = findElder(elderId);
+    const reply = `${e.name}님 이야기 잘 들었어요. "${body.message}" — 많이 신경 쓰이셨겠어요. 조금 더 자세히 들려주시겠어요?`;
+    let conversationId: number | null = null;
+    if (body.save) {
+      conversationId = nextId();
+      (store.checkins[elderId] ??= []).unshift({
+        conversationId,
+        purpose: "daily_checkin",
+        createdAt: nowIso(),
+        summary: body.message.slice(0, 30),
+      });
+      store.lastCheckin[elderId] = nowIso();
+    }
+    return { reply, conversationId };
   },
 };

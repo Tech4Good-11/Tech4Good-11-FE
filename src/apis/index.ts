@@ -11,6 +11,8 @@ import * as realGuardians from "./guardians";
 import * as realConversations from "./conversations";
 import * as realReminders from "./reminders";
 import * as realDocuments from "./documents";
+import * as realChat from "./chat";
+import * as realDailyLog from "./dailyLog";
 
 import * as mock from "./mock";
 
@@ -29,3 +31,5 @@ export const guardiansApi = USE_MOCK ? mock.guardiansApi : realGuardians;
 export const conversationsApi = USE_MOCK ? mock.conversationsApi : realConversations;
 export const remindersApi = USE_MOCK ? mock.remindersApi : realReminders;
 export const documentsApi = USE_MOCK ? mock.documentsApi : realDocuments;
+export const chatApi = USE_MOCK ? mock.chatApi : realChat;
+export const dailyLogApi = USE_MOCK ? mock.dailyLogApi : realDailyLog;

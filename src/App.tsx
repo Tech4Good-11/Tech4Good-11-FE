@@ -18,6 +18,7 @@ import ElderAdd from "./pages/child/ElderAdd";
 import ElderDashboard from "./pages/child/ElderDashboard";
 import ElderHealthInfo from "./pages/child/ElderHealthInfo";
 import ElderCheckin from "./pages/child/ElderCheckin";
+import ElderChat from "./pages/child/ElderChat";
 import ElderGuardians from "./pages/child/ElderGuardians";
 
 /** 부모(로컬 역할) 가드 */
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="elders/:elderId" element={<ElderDashboard />} />
           <Route path="elders/:elderId/health" element={<ElderHealthInfo />} />
           <Route path="elders/:elderId/checkin" element={<ElderCheckin />} />
+          <Route path="elders/:elderId/chat" element={<ElderChat />} />
           <Route path="elders/:elderId/guardians" element={<ElderGuardians />} />
         </Route>
 

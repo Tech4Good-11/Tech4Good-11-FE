@@ -43,18 +43,8 @@ function overallStatus(d: DashboardResponse): HealthStatus {
   return d.diseases.some((dis) => dis.status === "active") ? "caution" : "normal";
 }
 
-/** 실제 데이터 기반 AI 건강 점수(0~100). */
-function aiScore(d: DashboardResponse): number {
-  let s = 100;
-  s -= d.diseases.filter((x) => x.status === "active").length * 8;
-  s -= d.diseases.filter((x) => x.status === "managed").length * 2;
-  s -= d.medications.filter((m) => m.status === "stopped").length * 3;
-  return Math.max(60, Math.min(100, s));
-}
-
-/** 오늘 건강 요약 지표 (질병·복약은 실데이터, 운동·수면은 AI 대화 수집 전이라 미기록). */
+/** 오늘 건강 요약 지표 — 질병은 대시보드, 복약/운동/수면은 실제 지표(dailyLog·todayMedications). */
 function summaryMetrics(d: DashboardResponse) {
-  const activeMeds = d.medications.filter((m) => m.status === "active").length;
   const activeDiseases = d.diseases.filter((x) => x.status === "active").length;
 
   const disease: { value: string; status?: HealthStatus } =
@@ -64,16 +54,23 @@ function summaryMetrics(d: DashboardResponse) {
         ? { value: "주의 필요", status: "caution" }
         : { value: "안정적", status: "normal" };
 
+  // 오늘 복약: 활성 약 전체 대비 복용 확인(taken===true) 개수
+  const meds = d.todayMedications;
+  const takenCount = meds.filter((m) => m.taken === true).length;
   const medication: { value: string; status?: HealthStatus } =
-    d.medications.length === 0
+    meds.length === 0
       ? { value: "복용 약 없음" }
-      : { value: `${activeMeds}종 복용 중`, status: "normal" };
+      : { value: `${takenCount}/${meds.length} 복용`, status: takenCount === meds.length ? "normal" : "caution" };
+
+  // 운동/수면: dailyLog. null = 기록 없음 (0 과 구분)
+  const ex = d.dailyLog?.exerciseMinutes;
+  const sleep = d.dailyLog?.sleepHours;
 
   return [
     { label: "주요 질병 상태", ...disease },
     { label: "오늘 복약", ...medication },
-    { label: "오늘 운동", value: "기록 없음" as const },
-    { label: "어젯밤 수면", value: "기록 없음" as const },
+    { label: "오늘 운동", value: ex != null ? `${ex}분` : "기록 없음" },
+    { label: "어젯밤 수면", value: sleep != null ? `${sleep}시간` : "기록 없음" },
   ];
 }
 
@@ -106,7 +103,10 @@ function HeroCard({ d, onOthers }: { d: DashboardResponse; onOthers: () => void 
   const age = ageFromBirth(d.elder.birthDate);
   const status = overallStatus(d);
   const ui = STATUS_UI[status];
-  const score = aiScore(d);
+  const scoreValue = d.healthScore?.score ?? null; // null = 기록 없음
+  const hasScore = scoreValue != null;
+  const gauge = hasScore ? scoreValue : 0;
+  const scoreMessage = d.healthScore?.comment || ui.message;
   const metrics = summaryMetrics(d);
 
   return (
@@ -144,8 +144,14 @@ function HeroCard({ d, onOthers }: { d: DashboardResponse; onOthers: () => void 
           {/* AI 건강 점수 */}
           <div className="flex items-baseline gap-1">
             <span className="text-caption font-semibold text-gray-400">AI 건강 점수</span>
-            <span className="text-body-lg font-extrabold text-primary-500">{score}</span>
-            <span className="text-caption font-bold text-gray-400">점</span>
+            {hasScore ? (
+              <>
+                <span className="text-body-lg font-extrabold text-primary-500">{scoreValue}</span>
+                <span className="text-caption font-bold text-gray-400">점</span>
+              </>
+            ) : (
+              <span className="text-body font-bold text-gray-300">기록 없음</span>
+            )}
           </div>
         </div>
 
@@ -155,22 +161,24 @@ function HeroCard({ d, onOthers }: { d: DashboardResponse; onOthers: () => void 
           <div className="h-3 w-full rounded-full bg-gray-100 p-0.5 shadow-inner overflow-hidden">
             <div
               className="h-full rounded-full bg-primary transition-all duration-1000 ease-out relative"
-              style={{ width: `${score}%` }}
+              style={{ width: `${gauge}%` }}
             />
           </div>
 
-          {/* 점수 핀 표시 */}
-          <div
-            className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out -translate-x-1/2"
-            style={{ left: `${score}%` }}
-          >
-            <div className="h-7 w-7 rounded-full bg-white flex items-center justify-center shadow-card border-2 border-primary transition-colors duration-1000">
-              <span className="text-[11px] font-extrabold text-primary-500">{score}</span>
+          {/* 점수 핀 표시 (점수 있을 때만) */}
+          {hasScore && (
+            <div
+              className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out -translate-x-1/2"
+              style={{ left: `${gauge}%` }}
+            >
+              <div className="h-7 w-7 rounded-full bg-white flex items-center justify-center shadow-card border-2 border-primary transition-colors duration-1000">
+                <span className="text-[11px] font-extrabold text-primary-500">{scoreValue}</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        <p className="mt-4 text-body leading-relaxed text-gray-500">{ui.message}</p>
+        <p className="mt-4 text-body leading-relaxed text-gray-500">{scoreMessage}</p>
       </div>
 
       {/* 오늘 건강 요약(3순위) — 2×2 */}
@@ -218,8 +226,16 @@ const DEFAULT_CHECKLIST = [
   { id: "sleep", label: "일찍 잠자리에 들기" },
 ];
 
-function ChecklistCard({ items, onOpen }: { items: { id: string; label: string }[]; onOpen: () => void }) {
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
+function ChecklistCard({
+  items,
+  initialChecked,
+  onOpen,
+}: {
+  items: { id: string; label: string }[];
+  initialChecked: Record<string, boolean>;
+  onOpen: () => void;
+}) {
+  const [checked, setChecked] = useState<Record<string, boolean>>(initialChecked);
   const done = items.filter((it) => checked[it.id]).length;
   const percent = items.length ? Math.round((done / items.length) * 100) : 0;
 
@@ -294,14 +310,22 @@ export default function ElderDashboard() {
               d.todayReminders.length > 0
                 ? d.todayReminders.slice(0, 5).map((r) => ({ id: r.ruleCode, label: r.message }))
                 : DEFAULT_CHECKLIST;
-            const lastMessage = d.recentCheckins[0]?.summary ?? null;
+            // dailyLog.checklist 로 체크 상태 복원 (answer === 'yes' → 체크됨)
+            const initialChecked: Record<string, boolean> = {};
+            for (const c of d.dailyLog?.checklist ?? []) initialChecked[c.ruleCode] = c.answer === "yes";
+            // AI 상담 요약은 dailyLog.conditionSummary (recentCheckins.summary 는 대부분 null)
+            const lastMessage = d.dailyLog?.conditionSummary ?? null;
 
             return (
               <>
                 <HeroCard d={d} onOthers={() => navigate("/child")} />
 
-                <AiChatCard lastMessage={lastMessage} onStart={() => navigate(`${base}/checkin`)} />
-                <ChecklistCard items={checklist} onOpen={() => navigate(`${base}/checkin`)} />
+                <AiChatCard lastMessage={lastMessage} onStart={() => navigate(`${base}/chat`)} />
+                <ChecklistCard
+                  items={checklist}
+                  initialChecked={initialChecked}
+                  onOpen={() => navigate(`${base}/checkin`)}
+                />
               </>
             );
           }}
