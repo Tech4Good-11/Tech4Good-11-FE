@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Header } from "../../components/common";
-import { ChatBubble, TypingBubble } from "../../components/parent/ChatBubble";
+import { ChatBubble, TypingBubble } from "./ChatBubble";
 import { useApp } from "../../hooks/useApp";
 import { createTodayChecklist, nextId } from "../../data/mockData";
 import type { ChatMessage } from "../../types";
@@ -17,8 +15,8 @@ function aiTurnFor(userCount: number): {
   switch (userCount) {
     case 1:
       return {
-        text: "말씀해 주셔서 고마워요. 오늘 혈압이나 혈당은 재보셨어요?",
-        quickReplies: ["아직 안 쟀어요", "쟀어요"],
+        text: "말씀해 주셔서 고마워요. 오늘 약은 챙겨 드셨어요? 산책은 좀 하셨고요?",
+        quickReplies: ["아직이요", "네, 했어요"],
       };
     case 2:
       return {
@@ -31,9 +29,13 @@ function aiTurnFor(userCount: number): {
   }
 }
 
-export default function ParentChat() {
+/**
+ * 부모 AI 대화 패널 (헤더 없는 본문만).
+ * 전환탭 화면(ParentCheck) 안에서 렌더된다.
+ * "체크리스트 보기"를 누르면 부모를 건강 체크 탭으로 이동시킨다.
+ */
+export function ChatPanel({ onGoChecklist }: { onGoChecklist: () => void }) {
   const { state, dispatch } = useApp();
-  const navigate = useNavigate();
   const [isTyping, setIsTyping] = useState(false);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -54,9 +56,9 @@ export default function ParentChat() {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
 
-    // 체크리스트 보기 → 화면 이동
+    // 체크리스트 보기 → 건강 체크 탭으로 전환
     if (trimmed === GO_CHECKLIST) {
-      navigate("/parent/checklist");
+      onGoChecklist();
       return;
     }
 
@@ -93,9 +95,7 @@ export default function ParentChat() {
   }
 
   return (
-    <div className="mx-auto flex h-dvh max-w-app flex-col bg-gray-100">
-      <Header senior title="건강 대화" subtitle="AI 도우미" onBack={() => navigate("/parent")} />
-
+    <div className="flex min-h-0 flex-1 flex-col bg-gray-100">
       {/* 메시지 영역 */}
       <div className="no-scrollbar flex-1 space-y-3 overflow-y-auto px-[--app-gutter] py-4">
         {chatHistory.map((m) => (

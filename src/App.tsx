@@ -6,10 +6,7 @@ import { Spinner } from "./components/common";
 import RoleSelect from "./pages/RoleSelect";
 
 // 부모 (로컬 mock)
-import ParentLayout from "./pages/parent/ParentLayout";
-import ParentHome from "./pages/parent/ParentHome";
-import ParentChat from "./pages/parent/ParentChat";
-import ParentChecklist from "./pages/parent/ParentChecklist";
+import ParentCheck from "./pages/parent/ParentCheck";
 
 // 인증
 import Login from "./pages/auth/Login";
@@ -50,13 +47,10 @@ export default function App() {
       <Routes>
         <Route path="/" element={<RoleSelect />} />
 
-        {/* 부모 (로컬 mock, 변경 없음) */}
+        {/* 부모 (로컬 mock) */}
         <Route path="/parent" element={<RequireParent />}>
-          <Route path="chat" element={<ParentChat />} />
-          <Route element={<ParentLayout />}>
-            <Route index element={<ParentHome />} />
-            <Route path="checklist" element={<ParentChecklist />} />
-          </Route>
+          <Route index element={<ParentCheck />} />
+          <Route path="check" element={<Navigate to="/parent" replace />} />
         </Route>
 
         {/* 자녀(보호자) 인증 */}

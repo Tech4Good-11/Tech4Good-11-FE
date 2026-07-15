@@ -235,31 +235,15 @@ const chatHistory: ChatMessage[] = [
 ];
 
 // ── 오늘의 체크리스트 (초기 미완료) ──────────────
+// 자녀 대시보드(ElderDashboard)의 체크리스트 항목과 동일하게 유지한다.
+// (약 복용 / 물 충분히 마시기 / 산책하기 / 일찍 잠자리에 들기)
 export function createTodayChecklist(): ChecklistItem[] {
   return [
     {
       id: nextId("chk"),
-      title: "혈압 측정하기",
-      description: "아침 식전에 편하게 앉아서 측정해요",
-      icon: "🩺",
-      completed: false,
-      targetMetric: "bloodPressure",
-      simulatedValue: 128,
-      simulatedSecondary: 82,
-    },
-    {
-      id: nextId("chk"),
-      title: "혈당 측정하기",
-      description: "공복 혈당을 재보세요",
-      icon: "🩸",
-      completed: false,
-      targetMetric: "bloodSugar",
-      simulatedValue: 105,
-    },
-    {
-      id: nextId("chk"),
-      title: "아침 약 챙겨 드시기",
-      description: "혈압약·당뇨약을 물과 함께",
+      title: "약 복용",
+      description: "아침 약을 물과 함께 드세요",
+      question: "오늘 약을 챙겨 드셨어요?",
       icon: "💊",
       completed: false,
       targetMetric: "medication",
@@ -267,12 +251,31 @@ export function createTodayChecklist(): ChecklistItem[] {
     },
     {
       id: nextId("chk"),
-      title: "30분 산책하기",
+      title: "물 충분히 마시기",
+      description: "하루 여덟 잔, 조금씩 자주 드세요",
+      question: "물은 충분히 드셨어요?",
+      icon: "💧",
+      completed: false,
+    },
+    {
+      id: nextId("chk"),
+      title: "산책하기",
       description: "가볍게 동네 한 바퀴 걸어요",
+      question: "산책이나 가벼운 운동을 하셨어요?",
       icon: "🚶",
       completed: false,
       targetMetric: "steps",
       simulatedValue: 5200,
+    },
+    {
+      id: nextId("chk"),
+      title: "일찍 잠자리에 들기",
+      description: "푹 주무시면 컨디션이 좋아져요",
+      question: "어젯밤 잠은 잘 주무셨어요?",
+      icon: "🌙",
+      completed: false,
+      targetMetric: "sleep",
+      simulatedValue: 7,
     },
   ];
 }

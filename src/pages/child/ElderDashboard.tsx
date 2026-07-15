@@ -104,7 +104,8 @@ function Metric({
 // ── Hero 카드: 프로필 + 상태 + 요약을 하나로 통합 ───
 function HeroCard({ d, onOthers }: { d: DashboardResponse; onOthers: () => void }) {
   const age = ageFromBirth(d.elder.birthDate);
-  const ui = STATUS_UI[overallStatus(d)];
+  const status = overallStatus(d);
+  const ui = STATUS_UI[status];
   const score = aiScore(d);
   const metrics = summaryMetrics(d);
 
@@ -131,22 +132,45 @@ function HeroCard({ d, onOthers }: { d: DashboardResponse; onOthers: () => void 
         </button>
       </div>
 
-      {/* 상태(1순위) + AI 점수(2순위) */}
-      <div className="mt-8 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[32px] leading-none">{ui.emoji}</span>
-            <span className={cn("text-[40px] font-extrabold leading-none tracking-tight", ui.text)}>{ui.label}</span>
+      {/* 상태 및 AI 건강 점수 게이지바 */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between">
+          {/* 상태 표시 */}
+          <div className="flex items-center gap-1.5 text-body-lg font-bold">
+            <span className="text-[18px] leading-none">{ui.emoji}</span>
+            <span className={ui.text}>{ui.label}</span>
           </div>
-          <p className="mt-3 text-body-lg leading-relaxed text-gray-500">{ui.message}</p>
+
+          {/* AI 건강 점수 */}
+          <div className="flex items-baseline gap-1">
+            <span className="text-caption font-semibold text-gray-400">AI 건강 점수</span>
+            <span className="text-body-lg font-extrabold text-primary-500">{score}</span>
+            <span className="text-caption font-bold text-gray-400">점</span>
+          </div>
         </div>
-        <div className="shrink-0 text-right">
-          <p className="text-caption font-semibold text-gray-400">AI 건강 점수</p>
-          <p className="mt-1 text-[32px] font-extrabold leading-none text-primary-500">
-            {score}
-            <span className="ml-0.5 text-body font-bold text-gray-400">점</span>
-          </p>
+
+        {/* 게이지바 */}
+        <div className="relative mt-5 mb-2">
+          {/* 트랙 */}
+          <div className="h-3 w-full rounded-full bg-gray-100 p-0.5 shadow-inner overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-1000 ease-out relative"
+              style={{ width: `${score}%` }}
+            />
+          </div>
+
+          {/* 점수 핀 표시 */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 transition-all duration-1000 ease-out -translate-x-1/2"
+            style={{ left: `${score}%` }}
+          >
+            <div className="h-7 w-7 rounded-full bg-white flex items-center justify-center shadow-card border-2 border-primary transition-colors duration-1000">
+              <span className="text-[11px] font-extrabold text-primary-500">{score}</span>
+            </div>
+          </div>
         </div>
+
+        <p className="mt-4 text-body leading-relaxed text-gray-500">{ui.message}</p>
       </div>
 
       {/* 오늘 건강 요약(3순위) — 2×2 */}
@@ -215,8 +239,8 @@ function ChecklistCard({ items, onOpen }: { items: { id: string; label: string }
         </span>
       </div>
 
-      {/* 가로 2열로 배치 */}
-      <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1">
+      {/* 세로 1열로 배치하여 텍스트가 훼손되지 않도록 함 */}
+      <ul className="mt-4 flex flex-col gap-y-1">
         {items.map((it) => {
           const on = !!checked[it.id];
           return (
@@ -234,7 +258,7 @@ function ChecklistCard({ items, onOpen }: { items: { id: string; label: string }
                 >
                   ✓
                 </span>
-                <span className={cn("min-w-0 truncate text-body font-medium", on ? "text-gray-300 line-through" : "text-gray-800")}>
+                <span className={cn("text-body font-medium", on ? "text-gray-300 line-through" : "text-gray-800")}>
                   {it.label}
                 </span>
               </button>

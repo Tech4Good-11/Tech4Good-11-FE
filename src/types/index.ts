@@ -56,6 +56,8 @@ export interface ChecklistItem {
   id: string;
   title: string; // "혈압 측정하기"
   description?: string;
+  /** 카드형 설문에서 어르신께 여쭙는 질문 ("오늘 약 드셨어요?") */
+  question?: string;
   icon: string; // 이모지 or 아이콘 키
   completed: boolean;
   completedAt?: string;
