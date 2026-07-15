@@ -4,6 +4,7 @@ import { Header, Screen } from "../../components/common";
 import { consultApi, eldersApi } from "../../apis";
 import { useApi } from "../../hooks/useApi";
 import type { ChatHistoryMessage } from "../../types/api";
+import { ensureReplyDelay } from "../../utils/replyDelay";
 import { cn } from "../../utils/cn";
 
 interface Message {
@@ -51,11 +52,14 @@ export default function ElderChat() {
     setInput("");
     setBusy(true);
     setError(null);
+    const started = Date.now();
     try {
       // ⚠️ 자녀 화면은 /consult (저장·지표추출 없음). /chat 을 쓰면 어르신 발화로 오염됨
       const res = await consultApi.sendConsult(elderId, { message, history });
+      await ensureReplyDelay(started); // 최소 1.5초 뒤에 답변 노출
       setMessages((prev) => [...prev, { role: "assistant", content: res.reply }]);
     } catch (e) {
+      await ensureReplyDelay(started);
       setError(e instanceof Error ? e.message : "답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setBusy(false);

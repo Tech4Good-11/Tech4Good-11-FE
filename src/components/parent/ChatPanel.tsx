@@ -4,6 +4,7 @@ import { useApp } from "../../hooks/useApp";
 import { chatApi } from "../../apis";
 import { nextId } from "../../data/mockData";
 import { readActiveElderId } from "../../utils/parentBridge";
+import { ensureReplyDelay } from "../../utils/replyDelay";
 import type { ChatMessage } from "../../types";
 import type { ChatHistoryMessage } from "../../types/api";
 
@@ -58,6 +59,7 @@ export function ChatPanel({ onGoChecklist }: { onGoChecklist: () => void }) {
     const elderId = readActiveElderId() ?? FALLBACK_ELDER_ID;
 
     setIsTyping(true);
+    const started = Date.now();
     try {
       // ⚠️ /chat = 어르신 발화. save=true → 대화 저장 + 수면·운동·복약 지표 자동 추출
       //    (자녀 대시보드에 반영). 자녀 화면은 /consult 를 써야 함.
@@ -67,6 +69,7 @@ export function ChatPanel({ onGoChecklist }: { onGoChecklist: () => void }) {
         purpose: "daily_checkin",
         save: true,
       });
+      await ensureReplyDelay(started); // 최소 1.5초 뒤에 답변 노출
       dispatch({
         type: "ADD_CHAT_MESSAGE",
         message: {
@@ -78,6 +81,7 @@ export function ChatPanel({ onGoChecklist }: { onGoChecklist: () => void }) {
         },
       });
     } catch {
+      await ensureReplyDelay(started);
       dispatch({
         type: "ADD_CHAT_MESSAGE",
         message: {
