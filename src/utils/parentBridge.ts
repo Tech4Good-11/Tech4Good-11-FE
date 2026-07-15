@@ -10,6 +10,29 @@
 import type { ChecklistItem } from "../types";
 
 export const PARENT_CHECK_KEY = "ongi_parent_check_v1";
+export const ACTIVE_ELDER_KEY = "ongi_active_elder_v1";
+
+/**
+ * 자녀가 마지막으로 연 어르신 id 를 기억한다.
+ * 부모 앱에는 elderId 개념이 없어서, 부모의 `/chat` 발화가 "어떤 어르신"의 자가보고인지
+ * 이 값으로 연결한다(같은 브라우저 데모 기준). 없으면 부모 채팅은 폴백 elderId 를 쓴다.
+ */
+export function saveActiveElderId(elderId: number): void {
+  try {
+    localStorage.setItem(ACTIVE_ELDER_KEY, String(elderId));
+  } catch {
+    // 무시
+  }
+}
+export function readActiveElderId(): number | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_ELDER_KEY);
+    const id = raw != null ? Number(raw) : NaN;
+    return Number.isFinite(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface ParentCheckItem {
   id: string;

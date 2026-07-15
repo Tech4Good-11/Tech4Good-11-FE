@@ -1,33 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { ChatBubble, TypingBubble } from "./ChatBubble";
 import { useApp } from "../../hooks/useApp";
-import { createTodayChecklist, nextId } from "../../data/mockData";
+import { chatApi } from "../../apis";
+import { nextId } from "../../data/mockData";
+import { readActiveElderId } from "../../utils/parentBridge";
 import type { ChatMessage } from "../../types";
+import type { ChatHistoryMessage } from "../../types/api";
 
 const GO_CHECKLIST = "체크리스트 보기";
-
-/** 사용자 답변 수에 따른 AI 다음 응답 스크립트 (Mock AI) */
-function aiTurnFor(userCount: number): {
-  text: string;
-  quickReplies?: string[];
-  generateChecklist?: boolean;
-} | null {
-  switch (userCount) {
-    case 1:
-      return {
-        text: "말씀해 주셔서 고마워요. 오늘 약은 챙겨 드셨어요? 산책은 좀 하셨고요?",
-        quickReplies: ["아직이요", "네, 했어요"],
-      };
-    case 2:
-      return {
-        text: "알겠어요! 오늘 챙기시면 좋은 것들을 체크리스트로 정리해 드렸어요. 하나씩 해볼까요?",
-        quickReplies: [GO_CHECKLIST],
-        generateChecklist: true,
-      };
-    default:
-      return null;
-  }
-}
+// 부모 앱엔 elderId 개념이 없어, 자녀가 마지막으로 연 어르신을 사용(없으면 1번).
+const FALLBACK_ELDER_ID = 1;
 
 /**
  * 부모 AI 대화 패널 (헤더 없는 본문만).
@@ -39,7 +21,6 @@ export function ChatPanel({ onGoChecklist }: { onGoChecklist: () => void }) {
   const [isTyping, setIsTyping] = useState(false);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const { chatHistory } = state;
   const lastMessage = chatHistory[chatHistory.length - 1];
@@ -50,9 +31,7 @@ export function ChatPanel({ onGoChecklist }: { onGoChecklist: () => void }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatHistory.length, isTyping]);
 
-  useEffect(() => () => clearTimeout(timerRef.current), []);
-
-  function send(text: string) {
+  async function send(text: string) {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
 
@@ -71,39 +50,46 @@ export function ChatPanel({ onGoChecklist }: { onGoChecklist: () => void }) {
     dispatch({ type: "ADD_CHAT_MESSAGE", message: userMsg });
     setInput("");
 
-    // 긍정 답변("네, 했어요" 등)이면 약/산책 항목을 완료로 반영 → 자녀에게도 연동
-    const affirmative = /네|했|응|먹었|다녀|좋/.test(trimmed) && !/아직|안|못/.test(trimmed);
-
-    const userCount = chatHistory.filter((m) => m.sender === "user").length + 1;
-    const turn = aiTurnFor(userCount);
-    if (!turn) return;
+    // 이전 맥락(방금 보낼 메시지 제외)을 history 로 전달
+    const history: ChatHistoryMessage[] = chatHistory.map((m) => ({
+      role: m.sender === "user" ? "user" : "assistant",
+      content: m.text,
+    }));
+    const elderId = readActiveElderId() ?? FALLBACK_ELDER_ID;
 
     setIsTyping(true);
-    timerRef.current = setTimeout(() => {
-      setIsTyping(false);
-      if (turn.generateChecklist) {
-        const items = createTodayChecklist();
-        dispatch({ type: "GENERATE_CHECKLIST", items });
-        // 방금 답한 약/산책 여부를 체크리스트에 미리 반영
-        if (affirmative) {
-          for (const it of items) {
-            if (it.targetMetric === "medication" || it.targetMetric === "steps") {
-              dispatch({ type: "COMPLETE_CHECKLIST_ITEM", id: it.id });
-            }
-          }
-        }
-      }
+    try {
+      // ⚠️ /chat = 어르신 발화. save=true → 대화 저장 + 수면·운동·복약 지표 자동 추출
+      //    (자녀 대시보드에 반영). 자녀 화면은 /consult 를 써야 함.
+      const res = await chatApi.sendChat(elderId, {
+        message: trimmed,
+        history,
+        purpose: "daily_checkin",
+        save: true,
+      });
       dispatch({
         type: "ADD_CHAT_MESSAGE",
         message: {
           id: nextId("msg"),
           sender: "ai",
-          text: turn.text,
+          text: res.reply,
           timestamp: new Date().toISOString(),
-          quickReplies: turn.quickReplies,
+          quickReplies: [GO_CHECKLIST],
         },
       });
-    }, 900);
+    } catch {
+      dispatch({
+        type: "ADD_CHAT_MESSAGE",
+        message: {
+          id: nextId("msg"),
+          sender: "ai",
+          text: "지금은 답변을 드리기 어려워요. 잠시 후 다시 말씀해 주세요.",
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } finally {
+      setIsTyping(false);
+    }
   }
 
   return (

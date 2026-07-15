@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { ReactNode } from "react";
 import { AsyncBoundary, Header, Screen } from "../../components/common";
 import { useApi } from "../../hooks/useApi";
 import { useAuth } from "../../hooks/useAuth";
 import { useParentCheck } from "../../hooks/useParentCheck";
+import { saveActiveElderId } from "../../utils/parentBridge";
 import { dashboardApi } from "../../apis";
 import type { DashboardResponse } from "../../types/api";
 import { ageFromBirth, GENDER_LABEL } from "../../utils/apiLabels";
@@ -318,6 +319,10 @@ export default function ElderDashboard() {
     [elderId],
   );
   const parentCheck = useParentCheck(); // 부모가 로컬(localStorage)에 남긴 오늘 체크 현황
+  // 부모 앱이 이 어르신으로 /chat 하도록 활성 elderId 를 기억
+  useEffect(() => {
+    if (Number.isFinite(elderId)) saveActiveElderId(elderId);
+  }, [elderId]);
   const base = `/child/elders/${elderId}`;
 
   return (

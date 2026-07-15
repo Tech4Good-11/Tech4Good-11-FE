@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header, Screen } from "../../components/common";
-import { chatApi, eldersApi } from "../../apis";
+import { consultApi, eldersApi } from "../../apis";
 import { useApi } from "../../hooks/useApi";
 import type { ChatHistoryMessage } from "../../types/api";
 import { cn } from "../../utils/cn";
@@ -11,11 +11,12 @@ interface Message {
   content: string;
 }
 
+// 자녀(보호자)가 부모님 상태에 대해 AI에게 묻는 관점의 예시
 const SUGGESTIONS = [
-  "어젯밤에 잘 못 잤어요",
-  "오늘 산책 다녀왔어요",
-  "약을 깜빡하고 안 먹었어요",
-  "요즘 입맛이 없어요",
+  "어머니 요즘 어떠세요?",
+  "잠은 잘 주무시나요?",
+  "약은 잘 챙겨 드시나요?",
+  "제가 뭘 챙겨드리면 좋을까요?",
 ];
 
 export default function ElderChat() {
@@ -34,13 +35,13 @@ export default function ElderChat() {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
 
-  const greeting = `안녕하세요${name ? `, ${name}님` : ""}! 오늘 하루 어떻게 보내셨어요? 편하게 이야기해 주세요.`;
+  const greeting = `${name ? `${name}님` : "부모님"}에 대해 궁금한 점을 물어보세요. 남기신 대화·건강 기록을 바탕으로 알려드릴게요.`;
 
   async function send(text: string) {
     const message = text.trim();
     if (!message || busy) return;
 
-    // 이전 대화 맥락(방금 보낼 메시지 제외)
+    // 상담은 서버에 저장되지 않으므로, 맥락을 이어가려면 history 를 직접 넘긴다
     const history: ChatHistoryMessage[] = messages.map((m) => ({
       role: m.role,
       content: m.content,
@@ -51,13 +52,8 @@ export default function ElderChat() {
     setBusy(true);
     setError(null);
     try {
-      // save=true → 대화 저장 + 수면·운동·복약 지표 자동 추출(대시보드 반영)
-      const res = await chatApi.sendChat(elderId, {
-        message,
-        history,
-        purpose: "free",
-        save: true,
-      });
+      // ⚠️ 자녀 화면은 /consult (저장·지표추출 없음). /chat 을 쓰면 어르신 발화로 오염됨
+      const res = await consultApi.sendConsult(elderId, { message, history });
       setMessages((prev) => [...prev, { role: "assistant", content: res.reply }]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "답변을 받지 못했어요. 잠시 후 다시 시도해 주세요.");

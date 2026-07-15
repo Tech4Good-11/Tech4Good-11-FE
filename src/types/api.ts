@@ -305,3 +305,14 @@ export interface ChatResponse {
   reply: string;
   conversationId: number | null; // save=false면 null
 }
+
+// ── Consult (자녀가 부모님 상태를 AI와 상담, OpenAI) ──
+// ⚠️ /chat 과 다름: 발화자=자녀(보호자). 저장/지표추출 안 함, 3인칭 답변.
+//    자녀 화면은 반드시 /consult 사용 (/chat 은 어르신 발화로 오인되어 데이터 오염)
+export interface ConsultRequest {
+  message: string;
+  history?: ChatHistoryMessage[];
+}
+export interface ConsultResponse {
+  reply: string; // 저장 안 하므로 conversationId 없음
+}

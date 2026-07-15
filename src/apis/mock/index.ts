@@ -10,6 +10,8 @@ import { ApiError } from "../client";
 import type {
   ChatRequest,
   ChatResponse,
+  ConsultRequest,
+  ConsultResponse,
   CheckinSubmitRequest,
   CheckinSubmitResponse,
   CheckinTodayResponse,
@@ -647,7 +649,7 @@ export const dailyLogApi = {
   },
 };
 
-// ── Chat (에이전트 챗봇 흉내) ────────────────────
+// ── Chat (어르신 발화 — 저장+지표추출 흉내) ──────
 export const chatApi = {
   async sendChat(elderId: number, body: ChatRequest): Promise<ChatResponse> {
     await delay(700);
@@ -663,7 +665,38 @@ export const chatApi = {
         summary: body.message.slice(0, 30),
       });
       store.lastCheckin[elderId] = nowIso();
+
+      // 실제 백엔드의 지표 자동추출 흉내: 메시지에서 수면(시간)·운동(분) 파싱
+      const sleepMatch = body.message.match(/(\d+(?:\.\d+)?)\s*시간/);
+      const exerciseMatch = body.message.match(/(\d+)\s*분/);
+      const prev = store.dailyLogs[elderId];
+      store.dailyLogs[elderId] = {
+        elderId,
+        logDate: today(),
+        sleepHours: sleepMatch ? Number(sleepMatch[1]) : (prev?.sleepHours ?? null),
+        exerciseMinutes: exerciseMatch ? Number(exerciseMatch[1]) : (prev?.exerciseMinutes ?? null),
+        conditionSummary: body.message.slice(0, 40),
+        checklist: prev?.checklist ?? [],
+        sourceConversationId: conversationId,
+        updatedAt: nowIso(),
+      };
     }
     return { reply, conversationId };
+  },
+};
+
+// ── Consult (자녀 상담 — 3인칭·기록근거·저장안함 흉내) ─
+export const consultApi = {
+  async sendConsult(elderId: number, body: ConsultRequest): Promise<ConsultResponse> {
+    await delay(700);
+    const e = findElder(elderId);
+    const log = store.dailyLogs[elderId];
+    const facts: string[] = [];
+    if (log?.conditionSummary) facts.push(log.conditionSummary);
+    if (log?.sleepHours != null) facts.push(`어젯밤 ${log.sleepHours}시간 주무셨고`);
+    if (log?.exerciseMinutes != null) facts.push(`오늘 운동은 ${log.exerciseMinutes}분 하셨습니다`);
+    const basis = facts.length ? `기록을 보면 ${e.name}님께서는 ${facts.join(", ")}. ` : "";
+    const reply = `${basis}"${body.message}"에 대해서는, 무리하지 않게 곁에서 살펴봐 주시고 증상이 이어지면 진료를 권해 드리세요.`;
+    return { reply };
   },
 };
