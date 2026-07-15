@@ -1,3 +1,62 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    /* 8pt grid 기준 앱 좌우 여백 */
+    --app-gutter: 20px;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-gray-100 text-gray-900 font-sans antialiased;
+    margin: 0;
+    /* 모바일 탭 하이라이트 제거 (자체 micro interaction 사용) */
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 숫자 데이터가 자리수에 따라 흔들리지 않도록 */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  button {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  /* 모바일 퍼스트 앱 컨테이너 (데스크톱에서도 중앙 폭 고정) */
+  .app-shell {
+    @apply mx-auto w-full max-w-app min-h-dvh bg-gray-100;
+  }
+
+  /* 터치 영역 최소 44px 보장 (시니어 화면은 별도 확대) */
+  .tap-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* iOS 홈 인디케이터/노치 대응 */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}
